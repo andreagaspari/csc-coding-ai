@@ -61,9 +61,13 @@ def calcola_media(voti: List[float]) -> float:
         - Uses list comprehension to create a new filtered list
         - Checks that the list is not empty before calculating the average
     """
-    voti_validi = [v for v in voti if isinstance(v, (int, float))]  # Filters only valid numbers
-    return sum(voti_validi) / len(voti_validi) if voti_validi else 0.0  # Avoids division by zero
-
+    # Filtra solo i valori numerici (interi o float) dalla lista dei voti
+    voti_validi = [v for v in voti if isinstance(v, (int, float))]
+    if not voti_validi:
+        # Se non ci sono voti validi, restituisce 0.0 come media
+        return 0.0
+    # Calcola la media aritmetica dei voti validi
+    return sum(voti_validi) / len(voti_validi)
 
 def stampa_studenti(studenti: List[Dict]):
     """
@@ -293,6 +297,33 @@ def cancella_studente(percorso_file: str):
 
     # Conferma all'utente
     print(f"✅ Studente {nome_completo} rimosso con successo dal registro.")
+
+# Funzione per stampare la lista voti di uno studente
+def stampa_voti_studente(percorso_file: str, matricola: str):
+    """
+    Stampa i voti di uno studente identificato dalla matricola.
+    
+    Args:
+        percorso_file: Percorso completo del file dati
+        matricola: Matricola dello studente di cui stampare i voti
+        
+    Note:
+        - Cerca lo studente tramite la matricola
+        - Se lo studente non esiste, mostra un messaggio di errore
+        - Se esiste, stampa i suoi voti formattati
+    """
+    studenti = leggi_studenti_da_file(percorso_file)
+    studente_trovato = next((s for s in studenti if s.get("matricola") == matricola), None)
+
+    if not studente_trovato:
+        print(f"❌ Errore: Nessuno studente trovato con matricola {matricola}")
+        return
+
+    voti = studente_trovato.get("voti", [])
+    if not voti:
+        print(f"⚠️ Lo studente {studente_trovato['nome']} {studente_trovato['cognome']} non ha voti registrati.")
+    else:
+        print(f"Voti per {studente_trovato['nome']} {studente_trovato['cognome']}: {', '.join(map(str, voti))}")
 
 
 # Menù principale del programma
