@@ -12,6 +12,12 @@ Data is saved in JSON format in a text file.
 import os  # Module to interact with the operating system
 import json  # Module to work with data in JSON format (JavaScript Object Notation)
 from typing import List, Dict  # Type annotations to improve code readability
+from datetime import datetime  # Module for date and time operations
+from reportlab.lib.pagesizes import letter, A4  # PDF page sizes
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
 
 # Data file path configuration
 # ---------------------------------------
@@ -41,9 +47,12 @@ def leggi_studenti_da_file(percorso_file: str) -> List[Dict]:
     try:
         with open(percorso_file, encoding='utf-8') as file:  # 'with' ensures the file is closed
             return json.load(file)  # Converts JSON into Python data structure
-    except (json.JSONDecodeError, FileNotFoundError):
-        print("❌ Error in JSON file or file not found.")
-        return []  # Returns an empty list in case of error
+    except FileNotFoundError:
+        print("ℹ️ File not found. Starting with empty registry.")
+        return []  # Returns an empty list if file doesn't exist
+    except json.JSONDecodeError:
+        print("❌ Error: Invalid JSON format in file.")
+        return []  # Returns an empty list in case of JSON error
 
 
 def calcola_media(voti: List[float]) -> float:
@@ -82,14 +91,20 @@ def stampa_studenti(studenti: List[Dict]):
           a default value ('N/D' = Not Available) if the key doesn't exist
         - Formats the average with two decimals using f-string syntax {media:.2f}
     """
-    print("\nStudent list:")
+    if not studenti:
+        print("\n📋 Nessuno studente presente nel registro.")
+        return
+        
+    print(f"\n📋 Lista studenti ({len(studenti)} studenti):")
+    print("-" * 60)
     for studente in studenti:
         matricola = studente.get("matricola", "N/D")  # 'N/D' is the default value if the key doesn't exist
         nome = studente.get("nome", "N/D")
         cognome = studente.get("cognome", "N/D")
         voti = studente.get("voti", [])  # Empty list if the key doesn't exist
         media = calcola_media(voti)
-        print(f"[{matricola}] {nome} {cognome} - Grade average: {media:.2f}")  # Formatting with f-string
+        num_voti = len(voti)
+        print(f"[{matricola}] {nome} {cognome} - Media: {media:.2f} ({num_voti} voti)")  # Formatting with f-string
 
 
 def esegui_processo(percorso_file: str):
@@ -119,54 +134,61 @@ def aggiungi_studente(percorso_file: str):
     Note:
         - The function implements input data validation:
           * The student ID, first name, and last name fields are mandatory
-          * Grades must be integers between 18 and 30
+          * Student ID must be unique
+          * Grades are optional but must be integers between 18 and 30 if provided
         - Uses while loops to repeatedly request data until
           it is provided correctly
         - Each student is represented as a dictionary with standardized keys
     """
+    # Carica i dati attuali per verificare le matricole esistenti
+    studenti = leggi_studenti_da_file(percorso_file)
+    
     # PHASE 1: Data collection with validation
     # ----------------------------------------
     
-    # Request mandatory student ID
+    # Request mandatory and unique student ID
     while True:
-        matricola = input("Student ID: ").strip()  # .strip() removes leading and trailing spaces
-        if matricola:
-            break  # Exits the loop if the student ID is not empty
-        print("⚠️ Student ID cannot be empty. Try again.")
+        matricola = input("Numero di matricola: ").strip()  # .strip() removes leading and trailing spaces
+        if not matricola:
+            print("⚠️ La matricola è vuota. Riprova.")
+            continue
+        if matricola_esiste(studenti, matricola):
+            print(f"⚠️ La matricola {matricola} esiste già. Inserisci una matricola diversa.")
+            continue
+        break  # Exits the loop if the student ID is valid and unique
 
     # Request mandatory first name
     while True:
-        nome = input("First name: ").strip()
+        nome = input("Nome: ").strip()
         if nome:
             break
-        print("⚠️ First name cannot be empty. Try again.")
+        print("⚠️ Il nome non può essere vuoto. Riprova.")
 
     # Request mandatory last name
     while True:
-        cognome = input("Last name: ").strip()
+        cognome = input("Cognome: ").strip()
         if cognome:
             break
-        print("⚠️ Last name cannot be empty. Try again.")    # Request and validation of grades
-    voti_input = input("Enter grades separated by commas (e.g. 24,26,30): ")
-    try:
-        # List comprehension with multiple conditions:
-        # 1. Splits the input based on commas
-        # 2. For each value, removes leading and trailing spaces
-        # 3. Verifies that it consists only of digits
-        # 4. Verifies that it is in the 18-30 range
-        # 5. Converts to integer
-        voti = [
-            int(v.strip()) 
-            for v in voti_input.split(",") 
-            if v.strip().isdigit() and 18 <= int(v.strip()) <= 30
-        ]
-    except ValueError:
-        voti = []  # In case of error, initialize with empty list
-
-    # Verify that there is at least one valid grade
-    if not voti:
-        print("⚠️ No valid grades entered (must be between 18 and 30). Student not added.")
-        return  # Terminates the function without adding the student
+        print("⚠️ Il cognome non può essere vuoto. Riprova.")
+    
+    # Request and validation of grades (now optional)
+    voti = []
+    voti_input = input("Inserisci i voti separati da virgole (es. 24,26,30) o premi INVIO per saltare: ").strip()
+    
+    if voti_input:  # Se l'utente ha inserito dei voti
+        try:
+            # Process each grade
+            for v in voti_input.split(","):
+                voto_str = v.strip()
+                if voto_str:  # Ignore empty strings
+                    try:
+                        voto = valida_voto(voto_str)
+                        voti.append(voto)
+                    except ValueError as e:
+                        print(f"⚠️ Voto '{voto_str}' ignorato: {e}")
+        except Exception as e:
+            print(f"⚠️ Errore nel processare i voti: {e}")
+            voti = []
 
     # PHASE 2: Data creation and saving
     # ---------------------------------
@@ -179,18 +201,17 @@ def aggiungi_studente(percorso_file: str):
         "voti": voti
     }
 
-    # Load current students and add the new one
-    studenti = leggi_studenti_da_file(percorso_file)
-    studenti.append(nuovo_studente)  # Adds the new student to the existing list
+    # Add the new student to the list
+    studenti.append(nuovo_studente)
 
     # Save the updated file
-    with open(percorso_file, "w", encoding="utf-8") as file:
-        # ensure_ascii=False allows saving non-ASCII characters (e.g. accented letters)
-        # indent=2 formats JSON with 2-space indentation for better readability
-        json.dump(studenti, file, ensure_ascii=False, indent=2)
-
-    # Confirmation to user
-    print(f"\n✅ Student {nome} {cognome} successfully added.")
+    if salva_studenti_su_file(percorso_file, studenti):
+        if voti:
+            print(f"\n✅ Studente {nome} {cognome} aggiunto con successo con {len(voti)} voti.")
+        else:
+            print(f"\n✅ Studente {nome} {cognome} aggiunto con successo (nessun voto iniziale).")
+    else:
+        print("❌ Errore nel salvataggio dello studente.")
 
 
 def aggiungi_voto(percorso_file: str):
@@ -201,46 +222,44 @@ def aggiungi_voto(percorso_file: str):
         percorso_file: Percorso completo del file dati
         
     Note:
-        - Cerca lo studente tramite la matricola usando la funzione next() con un generatore
-        - Valida il voto inserito assicurandosi che sia un intero tra 18 e 30
+        - Cerca lo studente tramite la matricola usando la funzione dedicata
+        - Valida il voto inserito usando la funzione di validazione centralizzata
         - Usa il metodo setdefault() per gestire il caso in cui lo studente non abbia già voti
     """
     # Carica i dati attuali
     studenti = leggi_studenti_da_file(percorso_file)
 
+    if not studenti:
+        print("❌ Nessuno studente presente nel registro.")
+        return
+
     # Richiesta della matricola
     matricola_input = input("Inserisci il numero di matricola: ").strip()
 
     # Ricerca dello studente con la matricola inserita
-    # La funzione next() prende:
-    # - Un generatore (espressione che produce valori uno alla volta)
-    # - Un valore di default (None) da restituire se il generatore è vuoto
-    studente_trovato = next((s for s in studenti if s.get("matricola") == matricola_input), None)
+    studente_trovato = trova_studente_per_matricola(studenti, matricola_input)
 
     # Verifica se lo studente è stato trovato
     if not studente_trovato:
         print(f"❌ Errore: Nessuno studente trovato con matricola {matricola_input}")
-        return  # Esce dalla funzione    # Richiesta e validazione del nuovo voto
+        return
+
+    # Richiesta e validazione del nuovo voto
     voto_input = input("Inserisci il nuovo voto: ").strip()
     try:
-        voto = int(voto_input)  # Converte l'input in numero intero
-        if not 18 <= voto <= 30:  # Verifica il range consentito
-            raise ValueError  # Genera un'eccezione se il voto non è nel range
-    except ValueError:
-        print("❌ Errore: Il voto deve essere un numero intero tra 18 e 30.")
-        return  # Esce dalla funzione
+        voto = valida_voto(voto_input)
+    except ValueError as e:
+        print(f"❌ Errore: {e}")
+        return
 
     # Aggiunta del voto all'elenco
-    # setdefault() restituisce il valore della chiave se esiste o crea la chiave
-    # con il valore di default specificato (lista vuota in questo caso)
     studente_trovato.setdefault("voti", []).append(voto)
 
     # Salvataggio nel file
-    with open(percorso_file, "w", encoding="utf-8") as file:
-        json.dump(studenti, file, ensure_ascii=False, indent=2)
-
-    # Conferma all'utente
-    print(f"✅ Voto {voto} aggiunto con successo a {studente_trovato['nome']} {studente_trovato['cognome']}.")
+    if salva_studenti_su_file(percorso_file, studenti):
+        print(f"✅ Voto {voto} aggiunto con successo a {studente_trovato['nome']} {studente_trovato['cognome']}.")
+    else:
+        print("❌ Errore nel salvataggio del voto.")
 
 
 def cancella_studente(percorso_file: str):
@@ -251,7 +270,7 @@ def cancella_studente(percorso_file: str):
         percorso_file: Percorso completo del file dati
         
     Note:
-        - Cerca lo studente tramite la matricola
+        - Cerca lo studente tramite la matricola usando la funzione dedicata
         - Richiede conferma prima di procedere con la cancellazione
         - Aggiorna il file JSON dopo la cancellazione
     """
@@ -267,20 +286,15 @@ def cancella_studente(percorso_file: str):
     matricola_input = input("Inserisci il numero di matricola dello studente da cancellare: ").strip()
     
     # Ricerca dello studente con la matricola inserita
-    studente_index = None
-    for index, studente in enumerate(studenti):
-        if studente.get("matricola") == matricola_input:
-            studente_index = index
-            break
+    studente_trovato = trova_studente_per_matricola(studenti, matricola_input)
     
     # Verifica se lo studente è stato trovato
-    if studente_index is None:
+    if not studente_trovato:
         print(f"❌ Errore: Nessuno studente trovato con matricola {matricola_input}")
         return
     
     # Ottieni i dati dello studente per la conferma
-    studente = studenti[studente_index]
-    nome_completo = f"{studente.get('nome', 'N/D')} {studente.get('cognome', 'N/D')}"
+    nome_completo = f"{studente_trovato.get('nome', 'N/D')} {studente_trovato.get('cognome', 'N/D')}"
     
     # Chiedi conferma prima di procedere
     conferma = input(f"Sei sicuro di voler cancellare lo studente {nome_completo}? (s/n): ").strip().lower()
@@ -289,42 +303,277 @@ def cancella_studente(percorso_file: str):
         return
     
     # Rimuovi lo studente dalla lista
-    studente_rimosso = studenti.pop(studente_index)
+    studenti.remove(studente_trovato)
 
     # Salvataggio nel file
-    with open(percorso_file, "w", encoding="utf-8") as file:
-        json.dump(studenti, file, ensure_ascii=False, indent=2)
-
-    # Conferma all'utente
-    print(f"✅ Studente {nome_completo} rimosso con successo dal registro.")
+    if salva_studenti_su_file(percorso_file, studenti):
+        print(f"✅ Studente {nome_completo} rimosso con successo dal registro.")
+    else:
+        print("❌ Errore nel salvataggio dopo la cancellazione.")
 
 # Funzione per stampare la lista voti di uno studente
-def stampa_voti_studente(percorso_file: str, matricola: str):
+def stampa_voti_studente(percorso_file: str, matricola: str = None):
     """
     Stampa i voti di uno studente identificato dalla matricola.
     
     Args:
         percorso_file: Percorso completo del file dati
-        matricola: Matricola dello studente di cui stampare i voti
+        matricola: Matricola dello studente di cui stampare i voti (opzionale)
         
     Note:
-        - Cerca lo studente tramite la matricola
+        - Se matricola non è fornita, la richiede all'utente
+        - Cerca lo studente tramite la matricola usando la funzione dedicata
         - Se lo studente non esiste, mostra un messaggio di errore
-        - Se esiste, stampa i suoi voti formattati
+        - Se esiste, stampa i suoi voti formattati con statistiche
     """
     studenti = leggi_studenti_da_file(percorso_file)
-    studente_trovato = next((s for s in studenti if s.get("matricola") == matricola), None)
+    
+    if not studenti:
+        print("❌ Nessuno studente presente nel registro.")
+        return
+
+    # Se la matricola non è fornita, la richiediamo
+    if matricola is None:
+        matricola = input("Inserisci il numero di matricola: ").strip()
+    
+    studente_trovato = trova_studente_per_matricola(studenti, matricola)
 
     if not studente_trovato:
         print(f"❌ Errore: Nessuno studente trovato con matricola {matricola}")
         return
 
+    nome_completo = f"{studente_trovato['nome']} {studente_trovato['cognome']}"
     voti = studente_trovato.get("voti", [])
+    
+    print(f"\n📊 Dettaglio voti per {nome_completo} (Matricola: {matricola})")
+    print("-" * 50)
+    
     if not voti:
-        print(f"⚠️ Lo studente {studente_trovato['nome']} {studente_trovato['cognome']} non ha voti registrati.")
+        print("⚠️ Nessun voto registrato.")
     else:
-        print(f"Voti per {studente_trovato['nome']} {studente_trovato['cognome']}: {', '.join(map(str, voti))}")
+        print(f"Voti registrati: {', '.join(map(str, voti))}")
+        print(f"Numero totale voti: {len(voti)}")
+        print(f"Media: {calcola_media(voti):.2f}")
+        print(f"Voto minimo: {min(voti)}")
+        print(f"Voto massimo: {max(voti)}")
 
+
+def salva_lista_studenti_pdf(percorso_file: str, nome_file_pdf: str = None):
+    """
+    Salva la lista degli studenti in formato PDF con una tabella formattata.
+    
+    Args:
+        percorso_file: Percorso completo del file JSON dei dati
+        nome_file_pdf: Nome del file PDF da creare (opzionale)
+        
+    Note:
+        - Se nome_file_pdf non è fornito, usa un nome predefinito con timestamp
+        - Crea una tabella con matricola, nome, cognome, numero voti e media
+        - Aggiunge intestazione e data di creazione
+        - Gestisce il caso di lista vuota
+    """
+    studenti = leggi_studenti_da_file(percorso_file)
+    
+    if not studenti:
+        print("❌ Nessuno studente presente nel registro. Impossibile creare il PDF.")
+        return
+    
+    # Se non viene fornito un nome file, crea uno con timestamp
+    if nome_file_pdf is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nome_file_pdf = f"registro_studenti_{timestamp}.pdf"
+    
+    # Assicurati che abbia estensione .pdf
+    if not nome_file_pdf.endswith('.pdf'):
+        nome_file_pdf += '.pdf'
+    
+    # Percorso completo del file PDF
+    cartella_file = os.path.dirname(percorso_file)
+    percorso_pdf = os.path.join(cartella_file, nome_file_pdf)
+    
+    try:
+        # Crea il documento PDF
+        doc = SimpleDocTemplate(percorso_pdf, pagesize=A4)
+        elements = []
+        
+        # Stili
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            spaceAfter=30,
+            alignment=1  # Centrato
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Normal'],
+            fontSize=12,
+            spaceAfter=20,
+            alignment=1  # Centrato
+        )
+        
+        # Titolo
+        title = Paragraph("📋 Registro Elettronico Studenti", title_style)
+        elements.append(title)
+        
+        # Data di creazione
+        data_creazione = datetime.now().strftime("%d/%m/%Y alle %H:%M")
+        subtitle = Paragraph(f"Generato il {data_creazione}", subtitle_style)
+        elements.append(subtitle)
+        
+        # Spazio
+        elements.append(Spacer(1, 20))
+        
+        # Prepara i dati per la tabella
+        # Intestazione
+        data = [['Matricola', 'Nome', 'Cognome', 'N° Voti', 'Media']]
+        
+        # Dati degli studenti
+        for studente in studenti:
+            matricola = studente.get("matricola", "N/D")
+            nome = studente.get("nome", "N/D")
+            cognome = studente.get("cognome", "N/D")
+            voti = studente.get("voti", [])
+            num_voti = len(voti)
+            media = calcola_media(voti)
+            
+            data.append([
+                matricola,
+                nome,
+                cognome,
+                str(num_voti),
+                f"{media:.2f}"
+            ])
+        
+        # Crea la tabella
+        table = Table(data, colWidths=[1.2*inch, 1.5*inch, 1.5*inch, 0.8*inch, 0.8*inch])
+        
+        # Stile della tabella
+        table.setStyle(TableStyle([
+            # Intestazione
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            
+            # Righe dei dati
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.lightgrey]),
+            
+            # Bordi
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        elements.append(table)
+        
+        # Spazio
+        elements.append(Spacer(1, 30))
+        
+        # Statistiche riassuntive
+        total_studenti = len(studenti)
+        studenti_con_voti = len([s for s in studenti if s.get("voti", [])])
+        media_generale = calcola_media([v for s in studenti for v in s.get("voti", [])])
+        
+        stats_style = ParagraphStyle(
+            'Stats',
+            parent=styles['Normal'],
+            fontSize=10,
+            spaceAfter=10
+        )
+        
+        stats_text = f"""
+        <b>Statistiche Generali:</b><br/>
+        • Totale studenti: {total_studenti}<br/>
+        • Studenti con voti: {studenti_con_voti}<br/>
+        • Media generale: {media_generale:.2f}<br/>
+        """
+        
+        stats = Paragraph(stats_text, stats_style)
+        elements.append(stats)
+        
+        # Genera il PDF
+        doc.build(elements)
+        
+        print(f"✅ Lista studenti salvata con successo in: {percorso_pdf}")
+        print(f"📊 {total_studenti} studenti esportati nel PDF")
+        
+    except Exception as e:
+        print(f"❌ Errore durante la creazione del PDF: {e}")
+
+
+def salva_studenti_su_file(percorso_file: str, studenti: List[Dict]) -> bool:
+    """
+    Salva la lista di studenti nel file JSON.
+    
+    Args:
+        percorso_file: Percorso completo del file dati
+        studenti: Lista di studenti da salvare
+        
+    Returns:
+        bool: True se il salvataggio è riuscito, False altrimenti
+    """
+    try:
+        with open(percorso_file, "w", encoding="utf-8") as file:
+            json.dump(studenti, file, ensure_ascii=False, indent=2)
+        return True
+    except (IOError, OSError) as e:
+        print(f"❌ Errore nel salvataggio del file: {e}")
+        return False
+
+
+def trova_studente_per_matricola(studenti: List[Dict], matricola: str) -> Dict:
+    """
+    Trova uno studente nella lista tramite matricola.
+    
+    Args:
+        studenti: Lista di studenti in cui cercare
+        matricola: Matricola dello studente da trovare
+        
+    Returns:
+        Dict: Dizionario dello studente trovato, None se non trovato
+    """
+    return next((s for s in studenti if s.get("matricola") == matricola), None)
+
+
+def matricola_esiste(studenti: List[Dict], matricola: str) -> bool:
+    """
+    Verifica se una matricola esiste già nella lista studenti.
+    
+    Args:
+        studenti: Lista di studenti in cui cercare
+        matricola: Matricola da verificare
+        
+    Returns:
+        bool: True se la matricola esiste, False altrimenti
+    """
+    return any(s.get("matricola") == matricola for s in studenti)
+
+
+def valida_voto(voto_str: str) -> int:
+    """
+    Valida e converte una stringa di voto in intero.
+    
+    Args:
+        voto_str: Stringa contenente il voto da validare
+        
+    Returns:
+        int: Voto validato, solleva ValueError se non valido
+        
+    Raises:
+        ValueError: Se il voto non è valido (non numerico o fuori dal range 18-30)
+    """
+    try:
+        voto = int(voto_str.strip())
+        if not 18 <= voto <= 30:
+            raise ValueError(f"Il voto deve essere compreso tra 18 e 30, ricevuto: {voto}")
+        return voto
+    except ValueError:
+        raise ValueError("Il voto deve essere un numero intero tra 18 e 30")
 
 # Menù principale del programma
 if __name__ == "__main__":
@@ -337,14 +586,19 @@ if __name__ == "__main__":
         - Il menù utilizza un ciclo while infinito (interrotto solo dall'opzione di uscita)
         - Ogni opzione chiama la funzione corrispondente passando il percorso del file dati
     """
+    print("🎓 Benvenuto nel Sistema di Gestione Registro Studenti")
+    print("=" * 55)
+    
     while True:
         # Visualizza il menù delle opzioni
         print("\nCosa vuoi fare?")
-        print("[1] Stampa lista studenti")
-        print("[2] Aggiungi studente")
-        print("[3] Aggiungi voto")
-        print("[4] Cancella studente")
-        print("[0] Esci")
+        print("[1] 📋 Stampa lista studenti")
+        print("[2] ➕ Aggiungi studente")
+        print("[3] 📝 Aggiungi voto")
+        print("[4] 🗑️  Cancella studente")
+        print("[5] 📊 Visualizza voti di uno studente")
+        print("[6] 📥 Esporta lista studenti in PDF")
+        print("[0] 👋 Esci")
         scelta = input("Scelta: ").strip()
 
         # Gestione delle diverse opzioni tramite if-elif-else
@@ -356,8 +610,14 @@ if __name__ == "__main__":
             aggiungi_voto(file_path)
         elif scelta == "4":
             cancella_studente(file_path)
+        elif scelta == "5":
+            stampa_voti_studente(file_path)
+        elif scelta == "6":
+            # Esportazione della lista studenti in PDF
+            nome_file = input("Inserisci il nome del file PDF (o premi INVIO per nome predefinito): ").strip() or None
+            salva_lista_studenti_pdf(file_path, nome_file)
         elif scelta == "0":
-            print("👋 Uscita dal programma.")
+            print("👋 Uscita dal programma. Arrivederci!")
             break  # Esce dal ciclo while e termina il programma
         else:
             print("❌ Scelta non valida. Riprova.")
