@@ -117,6 +117,24 @@ class FileManager:
             
         except Exception:
             return False
+        
+    def ripristina_backup(self, backup_path: Path) -> bool:
+        """
+        Ripristina il file dati dal backup specificato.
+        
+        Args:
+            backup_path: Percorso del file di backup
+            
+        Returns:
+            bool: True se il ripristino è riuscito, False altrimenti
+        """
+        import shutil
+        try:
+            shutil.copy2(backup_path, self.file_path)
+            return True
+        except Exception as e:
+            print(f"❌ Errore nel ripristino del backup: {e}")
+            return False
 
 
 # Funzioni di compatibilità con il codice esistente

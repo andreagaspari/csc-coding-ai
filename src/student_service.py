@@ -183,6 +183,48 @@ class StudentService:
             return lista.ordina_per_media()
         else:
             return lista.ordina_per_nome()
+    
+    def salva_studenti(self) -> bool:
+        """Salva gli studenti nel file (wrapper pubblico)"""
+        return self._salva_studenti()
+
+    def carica_studenti(self) -> None:
+        """Carica gli studenti dal file (wrapper pubblico)"""
+        self._carica_studenti()
+
+    def cerca_studenti(self, nome: str, cognome: str = None) -> List[Studente]:
+        """Cerca studenti per nome o cognome"""
+        lista = self._carica_studenti()
+        risultati = []
+        for studente in lista.studenti:
+            if nome.lower() in studente.nome.lower() or (cognome and cognome.lower() in studente.cognome.lower()) or (nome.lower() in studente.cognome.lower()):
+                risultati.append(studente)
+        return risultati
+
+    def aggiungi_voto(self, matricola: str, voto: str) -> bool:
+        """Aggiunge un voto a uno studente (wrapper pubblico)"""
+        return self.aggiungi_voto_studente(matricola, voto)
+
+    def ottieni_studenti_eccellenti(self) -> List[Studente]:
+        """Restituisce la lista degli studenti eccellenti"""
+        lista = self._carica_studenti()
+        return lista.studenti_eccellenti()
+
+    def ottieni_studente(self, matricola: str) -> Optional[Studente]:
+        """Restituisce uno studente dato il numero di matricola"""
+        lista = self._carica_studenti()
+        return lista.trova_studente(int(matricola))
+
+    def esporta_dati_json(self) -> list:
+        """
+        Restituisce la lista degli studenti in formato lista di dizionari (per esportazione o test).
+        """
+        lista = self._carica_studenti()
+        return [studente.to_dict() for studente in lista]
+
+    def invalida_cache(self):
+        """Invalida la cache interna degli studenti (forza reload dal file)"""
+        self._lista_studenti = None
 
 
 # Funzioni di compatibilità con il codice esistente

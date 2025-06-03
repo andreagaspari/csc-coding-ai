@@ -39,13 +39,11 @@ def valida_voto(voto_str: str) -> int:
     """
     try:
         voto = int(float(voto_str.strip()))
-        if not (VOTO_MIN <= voto <= VOTO_MAX):
-            raise ValueError(f"Il voto deve essere compreso tra {VOTO_MIN} e {VOTO_MAX}")
-        return voto
-    except ValueError as e:
-        if "invalid literal" in str(e):
-            raise ValueError("Il voto deve essere un numero intero")
-        raise
+    except Exception:
+        raise ValueError("Il voto deve essere un numero intero")
+    if not (VOTO_MIN <= voto <= VOTO_MAX):
+        raise ValueError(f"Il voto deve essere compreso tra {VOTO_MIN} e {VOTO_MAX}")
+    return voto
 
 
 def valida_matricola(matricola_str: str) -> str:
@@ -64,13 +62,16 @@ def valida_matricola(matricola_str: str) -> str:
     matricola = matricola_str.strip()
     if not matricola:
         raise ValueError("La matricola non può essere vuota")
-    
+
+    if matricola.startswith("-"):
+        raise ValueError("La matricola deve essere un numero positivo")
+
     if not matricola.isdigit():
         raise ValueError("La matricola deve contenere solo numeri")
-    
-    if len(matricola) < 3:
-        raise ValueError("La matricola deve avere almeno 3 cifre")
-    
+
+    if len(matricola) < 2:
+        raise ValueError("La matricola deve essere di almeno 2 cifre")
+
     return matricola
 
 
@@ -90,15 +91,18 @@ def valida_nome(nome_str: str) -> str:
     nome = nome_str.strip()
     if not nome:
         raise ValueError("Il nome non può essere vuoto")
-    
+
     if len(nome) < 2:
-        raise ValueError("Il nome deve avere almeno 2 caratteri")
-    
+        raise ValueError("Il nome deve essere di almeno 2 caratteri")
+
+    if len(nome) > 50:
+        raise ValueError("Il nome non può superare i 50 caratteri")
+
     # Permetti lettere, spazi, apostrofi e trattini
     caratteri_validi = all(c.isalpha() or c in " '-" for c in nome)
     if not caratteri_validi:
-        raise ValueError("Il nome può contenere solo lettere, spazi, apostrofi e trattini")
-    
+        raise ValueError("Il nome deve contenere solo lettere")
+
     return nome.title()
 
 
