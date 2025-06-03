@@ -7,17 +7,35 @@ This program implements a simple electronic registry that allows to:
 - Add grades to existing students
 
 Data is saved in JSON format in a text file.
+
+Version 2.0 - New modular architecture
 """
 
 import os
-from menu import esegui_menu_principale
+import sys
 
-# Data file path configuration
-# ---------------------------------------
-# Gets the absolute path of the 'registro.txt' file in the same folder as the script
-main_dir = os.path.dirname(__file__)
-file_path = os.path.join(main_dir, 'registro.txt')
+# Aggiungi src al path per importare i moduli
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+from src.config import DEFAULT_DATA_PATH
+from src.ui import MenuUI
+from src.data_manager import FileManager
+from src.student_service import StudentService
+from src.pdf_exporter import PDFExporter
+
+def main():
+    """Punto di ingresso principale dell'applicazione"""
+    try:
+        # Inizializza e avvia l'interfaccia utente
+        ui = MenuUI(str(DEFAULT_DATA_PATH))
+        ui.esegui_menu_principale()
+        
+    except KeyboardInterrupt:
+        print("\n\n👋 Applicazione interrotta dall'utente. Arrivederci!")
+    except Exception as e:
+        print(f"❌ Errore inaspettato: {e}")
+        print("Per assistenza, controlla i log o contatta il supporto.")
 
 # Punto di ingresso dell'applicazione
 if __name__ == "__main__":
-    esegui_menu_principale(file_path)
+    main()
