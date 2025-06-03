@@ -56,5 +56,15 @@
       20,
       27
     ]
+  },
+  {
+    "matricola": "14",
+    "nome": "Luca",
+    "cognome": "Rossi",
+    "voti": [
+      24,
+      25,
+      30
+    ]
   }
 ]
