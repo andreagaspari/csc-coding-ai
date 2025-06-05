@@ -286,7 +286,7 @@ function sbc_render_modern_booking_calendar() {
     #sbc-booking-modal {
         display:none;
         position:fixed;
-        top:0; left:0;
+        inset:0;
         width:100vw; height:100vh;
         background:rgba(0,0,0,0.5);
         z-index:9999;
@@ -295,6 +295,7 @@ function sbc_render_modern_booking_calendar() {
         justify-content:center;
         padding:0;
         box-sizing:border-box;
+        /* Forza il popup sopra tutto */
     }
     #sbc-booking-modal > div {
         margin:auto;
@@ -302,14 +303,26 @@ function sbc_render_modern_booking_calendar() {
         max-width:350px;
         width:100%;
         box-sizing:border-box;
-        border-radius:8px;
+        border-radius:12px;
         box-shadow:0 4px 24px rgba(0,0,0,0.18);
+        background:#fff;
+        /* Forza centratura anche se il tema ha flex o grid */
+        left:0; right:0; top:0; bottom:0;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
     }
     @media (max-width: 500px) {
         #sbc-booking-modal > div {
             max-width:95vw;
             padding:10px;
         }
+    }
+    html, body {
+        height:100%;
+        min-height:100%;
+        overflow:auto !important;
     }
     </style>';
 
