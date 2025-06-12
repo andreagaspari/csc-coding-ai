@@ -31,7 +31,13 @@ def main():
     while True:
         try:
             # Caricamento domande
-            questions = load_questions("questions.json")  # o "questions.csv"
+            import os
+
+            # Trova la cartella dove si trova main.py
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(base_dir, "questions.json")
+
+            questions = load_questions(file_path)
         except Exception as e:
             print(f"❌ Errore nel caricamento delle domande: {e}")
             sys.exit(1)
@@ -50,20 +56,16 @@ def main():
         while (q := sessione.next_question()):
             display_question(q)
             risposta, tempo = prompt_answer(timeout)
-            sessione.record_answer(q, risposta, tempo)
-            is_correct = (risposta == q.corretta)
-            from score_calculator import calculate_score
-            punti = calculate_score(is_correct, tempo, timeout)
-            display_feedback(is_correct, punti, tempo)
+            punti, is_correct, scaduto = sessione.record_answer(q, risposta, tempo)
+            display_feedback(is_correct, punti, tempo, scaduto)
 
         # Mostra riepilogo finale
-        display_summary(sessione.stats)
+        display_summary(sessione.stats, sessione.punteggio)
 
         # Richiesta di ripetere il quiz
         if not prompt_restart():
             print("\n👋 Grazie per aver giocato!")
             break
-
 
 if __name__ == "__main__":
     main()

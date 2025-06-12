@@ -13,7 +13,7 @@ Utilizzato da:
 :created: 2025-06-12
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
 
 
@@ -65,24 +65,35 @@ class QuizSession:
             return domanda
         return None
 
-    def record_answer(self, domanda: Domanda, risposta: str, tempo: float):
+    def record_answer(self, domanda: Domanda, risposta: str, tempo: float) -> Tuple[int, bool, bool]:
         """
-        Registra una risposta e aggiorna punteggio e statistiche.
+        Registra una risposta, calcola il punteggio e aggiorna le statistiche.
 
-        :param domanda: la domanda a cui si sta rispondendo
-        :param risposta: lettera selezionata ("A"–"D")
-        :param tempo: tempo impiegato per rispondere (secondi)
+        :param domanda: oggetto Domanda
+        :param risposta: stringa "A"–"D" o "" se nulla
+        :param tempo: tempo impiegato per rispondere
+        :return: (punti ottenuti, risposta corretta?, tempo scaduto?)
         """
         from score_calculator import calculate_score
+        from timer import is_timeout
+
+        scaduto = is_timeout(tempo, self.timeout)
+
+        # Se il tempo è scaduto, la risposta è considerata nulla
+        if scaduto:
+            risposta = ""
 
         is_correct = risposta == domanda.corretta
         punti = calculate_score(is_correct, tempo, self.timeout)
         self.punteggio += punti
-
         self.stats["tempi"].append(tempo)
+
         if risposta == "":
             self.stats["saltate"] += 1
         elif is_correct:
             self.stats["corrette"] += 1
         else:
             self.stats["errate"] += 1
+
+        return punti, is_correct, scaduto
+

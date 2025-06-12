@@ -69,60 +69,55 @@ def display_question(domanda: Domanda) -> None:
 
 def prompt_answer(timeout: int) -> Tuple[str, float]:
     """
-    Richiede una risposta all’utente entro il timeout.
-    Restituisce la risposta e il tempo impiegato.
-    Se il tempo scade o input assente → risposta = "", tempo = timeout.
+    Chiede una risposta all’utente e misura il tempo di risposta.
+    Non impone un timeout rigido, ma calcola il tempo impiegato.
 
-    :param timeout: tempo massimo concesso per rispondere (secondi)
-    :return: tuple (risposta: str, tempo: float)
+    :param timeout: tempo massimo teorico (usato per il punteggio)
+    :return: tuple (risposta: str, tempo impiegato: float)
     """
     print(f"⏳ Hai {timeout} secondi per rispondere...")
 
     start = start_timer()
-    risposta = ""
+    risposta = input("👉 Risposta (A–D): ").strip().upper()
+    tempo = elapsed_time(start)
 
-    # Legge input bloccante entro tempo limite
-    try:
-        while True:
-            if sys.stdin in select.select([sys.stdin], [], [], 0.1)[0]:
-                risposta = input("👉 Risposta (A–D): ").strip().upper()
-                break
-            if is_timeout(elapsed_time(start), timeout):
-                print("⏱️  Tempo scaduto!")
-                break
-    except Exception:
-        risposta = ""
-
-    tempo = min(elapsed_time(start), timeout)
+    # Valida risposta
     if risposta not in ("A", "B", "C", "D"):
-        risposta = ""  # risposta nulla o malformata
+        risposta = ""  # considerata nulla o saltata
+
     return risposta, tempo
 
-
-def display_feedback(is_correct: bool, punti: int, tempo: float) -> None:
+def display_feedback(is_correct: bool, punti: int, tempo: float, scaduto: bool) -> None:
     """
     Mostra un messaggio in base all’esito della risposta.
 
     :param is_correct: True se risposta corretta
     :param punti: punteggio ottenuto (positivo o negativo)
     :param tempo: tempo impiegato per rispondere
+    :param scaduto: True se il timeout è stato superato
     """
-    stato = "✅ Corretto!" if is_correct else "❌ Sbagliato!"
+    if scaduto:
+        stato = "⏱️ Tempo scaduto!"
+    elif is_correct:
+        stato = "✅ Corretto!"
+    else:
+        stato = "❌ Sbagliato!"
+
     print(f"{stato} ({tempo:.1f}s) ➤ {'+' if punti >= 0 else ''}{punti} punti")
 
-
-def display_summary(stats: dict) -> None:
+def display_summary(stats: dict, punteggio: int) -> None:
     """
     Mostra le statistiche finali del quiz.
 
     :param stats: dizionario con campi: corrette, errate, saltate, tempi
+    :param punteggio: punteggio finale totale
     """
     print("\n📊 Risultati Finali")
     print("--------------------")
     print(f"✔️  Corrette : {stats['corrette']}")
     print(f"❌ Errate   : {stats['errate']}")
     print(f"⏭️  Saltate  : {stats['saltate']}")
-
     if stats["tempi"]:
         media = sum(stats["tempi"]) / len(stats["tempi"])
         print(f"⏱️  Tempo medio: {media:.2f} s")
+    print(f"🏁 Punteggio finale: {punteggio} punti")
