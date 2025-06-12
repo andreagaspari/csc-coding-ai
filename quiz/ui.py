@@ -69,23 +69,39 @@ def display_question(domanda: Domanda) -> None:
 
 def prompt_answer(timeout: int) -> Tuple[str, float]:
     """
-    Chiede una risposta all’utente e misura il tempo di risposta.
-    Non impone un timeout rigido, ma calcola il tempo impiegato.
+    Richiede una risposta all’utente entro un numero massimo di tentativi
+    e di secondi. Se il tempo massimo scade, la risposta viene considerata nulla.
 
-    :param timeout: tempo massimo teorico (usato per il punteggio)
-    :return: tuple (risposta: str, tempo impiegato: float)
+    :param timeout: tempo massimo in secondi
+    :return: tuple (risposta: str o "", tempo: float)
     """
     print(f"⏳ Hai {timeout} secondi per rispondere...")
 
     start = start_timer()
-    risposta = input("👉 Risposta (A–D): ").strip().upper()
+    tentativi = 0
+    risposta = ""
+
+    while tentativi < 3:
+        tempo = elapsed_time(start)
+        if is_timeout(tempo, timeout):
+            print("⏱️ Tempo scaduto!")
+            return "", tempo
+
+        risposta = input("👉 Risposta (A–D): ").strip().upper()
+        tempo = elapsed_time(start)
+
+        if is_timeout(tempo, timeout):
+            return "", tempo
+
+        if risposta in ("A", "B", "C", "D"):
+            return risposta, tempo
+
+        tentativi += 1
+        print(f"⚠️  Risposta non valida. ({tentativi}/3 tentativi)")
+
     tempo = elapsed_time(start)
+    return "", tempo
 
-    # Valida risposta
-    if risposta not in ("A", "B", "C", "D"):
-        risposta = ""  # considerata nulla o saltata
-
-    return risposta, tempo
 
 def display_feedback(is_correct: bool, punti: int, tempo: float, scaduto: bool) -> None:
     """
@@ -97,7 +113,7 @@ def display_feedback(is_correct: bool, punti: int, tempo: float, scaduto: bool) 
     :param scaduto: True se il timeout è stato superato
     """
     if scaduto:
-        stato = "⏱️ Tempo scaduto!"
+        stato = "⏱️  Tempo scaduto!"
     elif is_correct:
         stato = "✅ Corretto!"
     else:
@@ -121,3 +137,21 @@ def display_summary(stats: dict, punteggio: int) -> None:
         media = sum(stats["tempi"]) / len(stats["tempi"])
         print(f"⏱️  Tempo medio: {media:.2f} s")
     print(f"🏁 Punteggio finale: {punteggio} punti")
+
+
+from scores import salva_punteggio
+
+def prompt_initials_and_save(punteggio: int, tempi: list) -> None:
+    """
+    Chiede all’utente 3 lettere e salva il punteggio in scores.csv.
+
+    :param punteggio: punteggio finale
+    :param tempi: lista dei tempi impiegati per risposta
+    """
+    nome = ""
+    while not (len(nome) == 3 and nome.isalpha()):
+        nome = input("🎮 Inserisci le tue 3 lettere (A–Z): ").strip().upper()
+
+    media = sum(tempi) / len(tempi) if tempi else 0.0
+    salva_punteggio(nome, punteggio, media)
+    print(f"💾 Punteggio salvato come '{nome}'!")

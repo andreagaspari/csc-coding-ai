@@ -21,6 +21,7 @@ from ui import (
     prompt_answer,
     display_feedback,
     display_summary,
+    prompt_initials_and_save
 )
 
 
@@ -61,6 +62,7 @@ def main():
 
         # Mostra riepilogo finale
         display_summary(sessione.stats, sessione.punteggio)
+        prompt_initials_and_save(sessione.punteggio, sessione.stats["tempi"])
 
         # Richiesta di ripetere il quiz
         if not prompt_restart():
