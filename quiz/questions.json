@@ -1,0 +1,302 @@
+[
+  {
+    "domanda": "Qual è il paese con la maggiore estensione territoriale al mondo?",
+    "opzioni": {
+      "A": "Canada",
+      "B": "Cina",
+      "C": "Russia",
+      "D": "Stati Uniti"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Chi ha dipinto la Cappella Sistina?",
+    "opzioni": {
+      "A": "Leonardo da Vinci",
+      "B": "Michelangelo",
+      "C": "Raffaello",
+      "D": "Donatello"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "In che anno è caduto il Muro di Berlino?",
+    "opzioni": {
+      "A": "1987",
+      "B": "1988",
+      "C": "1989",
+      "D": "1990"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Quale elemento chimico ha simbolo 'Au'?",
+    "opzioni": {
+      "A": "Argento",
+      "B": "Alluminio",
+      "C": "Oro",
+      "D": "Arsenico"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Chi ha scritto 'Divina Commedia'?",
+    "opzioni": {
+      "A": "Boccaccio",
+      "B": "Dante Alighieri",
+      "C": "Petrarca",
+      "D": "Manzoni"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Quale pianeta è noto per avere un sistema di anelli ben visibili?",
+    "opzioni": {
+      "A": "Giove",
+      "B": "Saturno",
+      "C": "Urano",
+      "D": "Nettuno"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Quanti sono gli stati membri dell'Unione Europea (2024)?",
+    "opzioni": {
+      "A": "27",
+      "B": "28",
+      "C": "26",
+      "D": "25"
+    },
+    "corretta": "A"
+  },
+  {
+    "domanda": "In quale continente si trova l'Argentina?",
+    "opzioni": {
+      "A": "Asia",
+      "B": "Africa",
+      "C": "Europa",
+      "D": "Sud America"
+    },
+    "corretta": "D"
+  },
+  {
+    "domanda": "Chi ha inventato il telefono?",
+    "opzioni": {
+      "A": "Thomas Edison",
+      "B": "Nikola Tesla",
+      "C": "Alexander Graham Bell",
+      "D": "Guglielmo Marconi"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Come si chiama il processo con cui le piante producono ossigeno?",
+    "opzioni": {
+      "A": "Respirazione",
+      "B": "Fotosintesi",
+      "C": "Fermentazione",
+      "D": "Evaporazione"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Chi ha scritto 'Il nome della rosa'?",
+    "opzioni": {
+      "A": "Italo Calvino",
+      "B": "Umberto Eco",
+      "C": "Andrea Camilleri",
+      "D": "Luigi Pirandello"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Qual è la capitale del Canada?",
+    "opzioni": {
+      "A": "Toronto",
+      "B": "Montreal",
+      "C": "Vancouver",
+      "D": "Ottawa"
+    },
+    "corretta": "D"
+  },
+  {
+    "domanda": "In quale anno è avvenuto il primo sbarco sulla Luna?",
+    "opzioni": {
+      "A": "1967",
+      "B": "1969",
+      "C": "1971",
+      "D": "1973"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Qual è la lingua più parlata al mondo per numero di madrelingua?",
+    "opzioni": {
+      "A": "Inglese",
+      "B": "Spagnolo",
+      "C": "Cinese mandarino",
+      "D": "Hindi"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Chi ha composto 'Le quattro stagioni'?",
+    "opzioni": {
+      "A": "Mozart",
+      "B": "Beethoven",
+      "C": "Vivaldi",
+      "D": "Bach"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Qual è l’organo principale del sistema circolatorio umano?",
+    "opzioni": {
+      "A": "Fegato",
+      "B": "Cuore",
+      "C": "Polmone",
+      "D": "Rene"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Dove si trovano le Piramidi di Giza?",
+    "opzioni": {
+      "A": "Marocco",
+      "B": "Messico",
+      "C": "Egitto",
+      "D": "India"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Qual è la valuta ufficiale del Giappone?",
+    "opzioni": {
+      "A": "Yuan",
+      "B": "Won",
+      "C": "Yen",
+      "D": "Dollaro"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Chi ha dipinto 'La notte stellata'?",
+    "opzioni": {
+      "A": "Monet",
+      "B": "Van Gogh",
+      "C": "Cézanne",
+      "D": "Matisse"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Quale gas respiriamo per sopravvivere?",
+    "opzioni": {
+      "A": "Azoto",
+      "B": "Ossigeno",
+      "C": "Anidride carbonica",
+      "D": "Idrogeno"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Chi ha scritto 'I Promessi Sposi'?",
+    "opzioni": {
+      "A": "Giovanni Verga",
+      "B": "Ugo Foscolo",
+      "C": "Giacomo Leopardi",
+      "D": "Alessandro Manzoni"
+    },
+    "corretta": "D"
+  },
+  {
+    "domanda": "Qual è la capitale dell'Australia?",
+    "opzioni": {
+      "A": "Sydney",
+      "B": "Melbourne",
+      "C": "Canberra",
+      "D": "Perth"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Chi ha teorizzato la relatività?",
+    "opzioni": {
+      "A": "Newton",
+      "B": "Einstein",
+      "C": "Hawking",
+      "D": "Galileo"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Quale metallo si usa per fare le lattine?",
+    "opzioni": {
+      "A": "Piombo",
+      "B": "Alluminio",
+      "C": "Ferro",
+      "D": "Rame"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Chi ha scoperto l’America?",
+    "opzioni": {
+      "A": "Cristoforo Colombo",
+      "B": "Amerigo Vespucci",
+      "C": "Marco Polo",
+      "D": "James Cook"
+    },
+    "corretta": "A"
+  },
+  {
+    "domanda": "Qual è la montagna più alta del mondo?",
+    "opzioni": {
+      "A": "K2",
+      "B": "Everest",
+      "C": "Kilimangiaro",
+      "D": "Mont Blanc"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "In quale mare sfocia il Nilo?",
+    "opzioni": {
+      "A": "Mar Rosso",
+      "B": "Mar Nero",
+      "C": "Mar Mediterraneo",
+      "D": "Mar Arabico"
+    },
+    "corretta": "C"
+  },
+  {
+    "domanda": "Quale città è famosa per il Colosseo?",
+    "opzioni": {
+      "A": "Napoli",
+      "B": "Roma",
+      "C": "Milano",
+      "D": "Verona"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Chi è l'autore de 'La teoria dei giochi'?",
+    "opzioni": {
+      "A": "Alan Turing",
+      "B": "John Nash",
+      "C": "Isaac Newton",
+      "D": "Stephen Hawking"
+    },
+    "corretta": "B"
+  },
+  {
+    "domanda": "Qual è il simbolo chimico dell’acqua?",
+    "opzioni": {
+      "A": "H2",
+      "B": "O2",
+      "C": "H2O",
+      "D": "CO2"
+    },
+    "corretta": "C"
+  }
+]
