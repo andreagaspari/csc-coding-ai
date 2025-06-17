@@ -21,9 +21,16 @@ def main():
     Ciclo principale del programma. Gestisce una o più sessioni quiz.
     """
     parser = argparse.ArgumentParser(description="Quiz a scelta multipla")
-    parser.add_argument('--ui', choices=['terminale', 'tkinter'], default='terminale', help='Scegli la UI: terminale o tkinter')
+    parser.add_argument('--ui', choices=['terminale', 'tkinter', 'streamlit'], default='terminale', 
+                      help='Scegli la UI: terminale, tkinter o streamlit')
     args = parser.parse_args()
 
+    if args.ui == 'streamlit':
+        print("Per avviare l'interfaccia Streamlit esegui:\nstreamlit run streamlit_app.py")
+        print("Assicurati di aver installato le dipendenze con: pip install -r requirements.txt")
+        import sys
+        sys.exit(0)
+        
     if args.ui == 'tkinter':
         from ui_tkinter import QuizUI
         from models import QuizSession
