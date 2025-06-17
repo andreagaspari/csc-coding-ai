@@ -4,6 +4,7 @@
 # Interfaccia streamlit
 streamlit>=1.31.1
 streamlit-autorefresh>=0.0.1
+pandas>=2.0.0
 
 # Altre dipendenze
 pytest>=7.0.0

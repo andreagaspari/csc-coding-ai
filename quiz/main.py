@@ -144,12 +144,17 @@ def main():
         display_summary,
         prompt_initials_and_save
     )
+    
+    # Assicuriamoci che le importazioni necessarie siano disponibili
+    import os
+    import sys
+    import random
+    from data_loader import load_questions
+    from models import QuizSession
 
     while True:
         try:
             # Caricamento domande
-            import os
-
             # Trova la cartella dove si trova main.py
             base_dir = os.path.dirname(os.path.abspath(__file__))
             file_path = os.path.join(base_dir, "questions.json")

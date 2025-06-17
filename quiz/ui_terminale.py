@@ -2,7 +2,7 @@
 Modulo di interfaccia a riga di comando per il Quiz.
 
 Contiene funzioni per:
-- chiedere all’utente la difficoltà
+- chiedere all'utente la difficoltà
 - visualizzare le domande
 - raccogliere risposte con timer
 - mostrare il feedback e i risultati finali
@@ -16,15 +16,29 @@ Nessuna modifica al codice originale.
 
 import sys
 import time
+import os
 from typing import Tuple
 from models import Domanda
 from config import DIFFICULTY_SETTINGS, DEFAULT_DIFFICULTY
-from timer import start_timer, elapsed_time, is_timeout
+
+# Implementazione delle funzioni del timer direttamente qui
+# per evitare problemi di importazione
+def start_timer() -> float:
+    """Restituisce il timestamp corrente di inizio."""
+    return time.monotonic()
+
+def elapsed_time(start: float) -> float:
+    """Calcola il tempo trascorso dal momento di avvio."""
+    return time.monotonic() - start
+
+def is_timeout(elapsed: float, timeout: int) -> bool:
+    """Verifica se il tempo trascorso supera il timeout."""
+    return elapsed >= timeout
 
 
 def prompt_difficulty() -> Tuple[int, int]:
     """
-    Chiede all’utente di selezionare un livello di difficoltà (1–3).
+    Chiede all'utente di selezionare un livello di difficoltà (1–3).
     Massimo 3 tentativi. Se falliti, usa DEFAULT_DIFFICULTY.
 
     :return: tuple (numero_domande, timeout)
@@ -142,11 +156,34 @@ def display_summary(stats: dict, punteggio: int) -> None:
     print(f"🏁 Punteggio finale: {punteggio} punti")
 
 
-from scores import salva_punteggio
+# Importazione di funzioni da scores.py
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from scores import salva_punteggio, ottieni_classifica
+
+def display_leaderboard():
+    """
+    Visualizza la classifica dei migliori punteggi.
+    """
+    classifica = ottieni_classifica(10)  # Ottieni i top 10
+    
+    if not classifica:
+        print("\n🏆 Classifica non disponibile")
+        return
+        
+    print("\n🏆 CLASSIFICA TOP 10 🏆")
+    print("-" * 40)
+    print(f"{'POS':<4}{'NOME':<6}{'PUNTI':<8}{'TEMPO':<8}{'DATA':<12}")
+    print("-" * 40)
+    
+    for i, (nome, punteggio, tempo, data) in enumerate(classifica, 1):
+        print(f"{i:<4}{nome:<6}{punteggio:<8}{tempo:<8.2f}{data:<12}")
 
 def prompt_initials_and_save(punteggio: int, tempi: list) -> None:
     """
-    Chiede all’utente 3 lettere e salva il punteggio in scores.csv.
+    Chiede all'utente 3 lettere e salva il punteggio in scores.csv.
+    Poi mostra la classifica aggiornata.
 
     :param punteggio: punteggio finale
     :param tempi: lista dei tempi impiegati per risposta
@@ -158,3 +195,9 @@ def prompt_initials_and_save(punteggio: int, tempi: list) -> None:
     media = sum(tempi) / len(tempi) if tempi else 0.0
     salva_punteggio(nome, punteggio, media)
     print(f"💾 Punteggio salvato come '{nome}'!")
+    
+    # Mostra la classifica dopo il salvataggio
+    display_leaderboard()
+    
+    # Pausa per dare tempo di leggere la classifica
+    input("\nPremi INVIO per continuare...")

@@ -1,7 +1,8 @@
 # ui_tkinter.py
 # Interfaccia grafica per il quiz usando tkinter
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
+from scores import ottieni_classifica
 
 class QuizUI:
     def __init__(self, controller):
@@ -149,42 +150,29 @@ class QuizUI:
                 pass
 
     def show_recap(self, punteggio, dettagli, on_save, on_exit, on_resume):
+        """
+        Mostra il riepilogo del quiz con il punteggio finale.
+        Permette di salvare il punteggio, uscire o riprendere.
+        """
         self.clear_frame()
+        
         frame = tk.Frame(self.root, bg='white')
-        frame.pack(expand=True, fill='both')
+        frame.pack(fill='both', expand=True, padx=20, pady=20)
         
-        # Titolo
-        tk.Label(frame, text='IL TUO PUNTEGGIO', font=('Arial', 16, 'bold'), bg='white').pack(pady=20)
+        # Creazione di titolo e descrizione per il riepilogo
+        tk.Label(frame, text='Quiz Completato!', font=('Arial', 20, 'bold'), 
+                bg='white', fg='#2C3E50').pack(pady=10)
+                
+        tk.Label(frame, text=f'Punteggio: {punteggio}', font=('Arial', 24), 
+                bg='white', fg='#16A085').pack(pady=10)
+                
+        tk.Label(frame, text=dettagli, font=('Arial', 12), 
+                bg='white', fg='#555').pack(pady=5)
+                
+        # Frame per l'inserimento delle iniziali
+        tk.Label(frame, text='Inserisci le tue iniziali:', font=('Arial', 12), 
+                bg='white').pack(pady=(20, 5))
         
-        # Punteggio grande
-        tk.Label(frame, text=str(punteggio), font=('Arial', 32, 'bold'), bg='white').pack(pady=10)
-        
-        # Statistiche con icone
-        stats_frame = tk.Frame(frame, bg='white')
-        stats_frame.pack(pady=10)
-        
-        # Estrai i numeri dal dettaglio
-        import re
-        numeri = re.findall(r'\d+', dettagli)
-        if len(numeri) >= 3:
-            corrette = int(numeri[0])
-            errate = int(numeri[1])
-            saltate = int(numeri[2])
-            
-            # Mostra statistiche con icone
-            tk.Label(stats_frame, text="✓", font=('Arial', 14), fg='green', bg='white').grid(row=0, column=0, padx=5)
-            tk.Label(stats_frame, text=str(corrette), font=('Arial', 12), bg='white').grid(row=0, column=1, padx=5)
-            
-            tk.Label(stats_frame, text="✗", font=('Arial', 14), fg='red', bg='white').grid(row=0, column=2, padx=5)
-            tk.Label(stats_frame, text=str(errate), font=('Arial', 12), bg='white').grid(row=0, column=3, padx=5)
-            
-            tk.Label(stats_frame, text="→", font=('Arial', 14), fg='blue', bg='white').grid(row=0, column=4, padx=5)
-            tk.Label(stats_frame, text=str(saltate), font=('Arial', 12), bg='white').grid(row=0, column=5, padx=5)
-        
-        # Label con istruzioni per le iniziali
-        tk.Label(frame, text="Inserisci le tue iniziali (3 lettere):", font=('Arial', 12), bg='white').pack(pady=(20, 5))
-        
-        # Frame con trattini
         mask_frame = tk.Frame(frame, bg='white')
         mask_frame.pack(pady=5)
         
@@ -207,7 +195,7 @@ class QuizUI:
         
         # Bottoni per salvare, uscire o riprendere
         tk.Button(frame, text='Salva il tuo risultato', 
-                  command=lambda: on_save(''.join([e.get().upper() for e in entries])),
+                  command=lambda: self._save_and_show_leaderboard(''.join([e.get().upper() for e in entries]), on_save),
                   width=20).pack(pady=10)
         
         btn_frame = tk.Frame(frame, bg='white')
@@ -216,7 +204,79 @@ class QuizUI:
         tk.Button(btn_frame, text='RIPRENDI', width=10, command=on_resume).pack(side='left', padx=10)
         
         self.current_frame = frame
+    
+    def _save_and_show_leaderboard(self, nome, on_save):
+        """
+        Salva il punteggio e mostra la classifica
+        """
+        # Prima salviamo il punteggio
+        on_save(nome)
+        # Poi mostriamo la classifica
+        self.show_leaderboard()
 
+    def show_leaderboard(self):
+        """
+        Mostra una finestra con la classifica dei migliori punteggi
+        """
+        # Crea una nuova finestra di dialogo
+        leaderboard_window = tk.Toplevel(self.root)
+        leaderboard_window.title("🏆 Classifica")
+        leaderboard_window.geometry('400x400')
+        leaderboard_window.configure(bg='white')
+        
+        # Intestazione
+        tk.Label(leaderboard_window, text='🏆 CLASSIFICA TOP 10 🏆', 
+                font=('Arial', 16, 'bold'), bg='white', fg='#2C3E50').pack(pady=10)
+        
+        # Crea la tabella per la classifica
+        columns = ('pos', 'nome', 'punti', 'tempo', 'data')
+        tree = ttk.Treeview(leaderboard_window, columns=columns, show='headings', height=10)
+        
+        # Configura le intestazioni delle colonne
+        tree.heading('pos', text='#')
+        tree.heading('nome', text='Nome')
+        tree.heading('punti', text='Punti')
+        tree.heading('tempo', text='Tempo')
+        tree.heading('data', text='Data')
+        
+        # Configura le larghezze delle colonne
+        tree.column('pos', width=40, anchor='center')
+        tree.column('nome', width=60, anchor='center')
+        tree.column('punti', width=80, anchor='center')
+        tree.column('tempo', width=80, anchor='center')
+        tree.column('data', width=100, anchor='center')
+        
+        # Ottieni la classifica
+        classifica = ottieni_classifica(10)
+        
+        # Inserisci i dati
+        for i, (nome, punteggio, tempo, data) in enumerate(classifica, 1):
+            tree.insert('', 'end', values=(i, nome, punteggio, f"{tempo:.2f}", data))
+        
+        # Aggiungi scrollbar
+        scrollbar = ttk.Scrollbar(leaderboard_window, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
+        tree.pack(pady=10, padx=10, fill='both', expand=True)
+        
+        # Bottone per chiudere
+        tk.Button(leaderboard_window, text='Chiudi', command=leaderboard_window.destroy,
+                 width=10).pack(pady=10)
+
+        # Posiziona la finestra al centro della finestra principale
+        leaderboard_window.transient(self.root)
+        leaderboard_window.grab_set()
+        
+        # Aggiorna la finestra per assicurarsi che tutto sia renderizzato correttamente
+        leaderboard_window.update_idletasks()
+        
+        # Calcola la posizione per centrare la finestra
+        width = leaderboard_window.winfo_width()
+        height = leaderboard_window.winfo_height()
+        x = (self.root.winfo_width() // 2) - (width // 2) + self.root.winfo_x()
+        y = (self.root.winfo_height() // 2) - (height // 2) + self.root.winfo_y()
+        leaderboard_window.geometry(f'+{x}+{y}')
+      
     def _validate_letter(self, event, idx, entries):
         """Valida l'input per accettare solo lettere e gestisce il passaggio tra campi"""
         entry = event.widget

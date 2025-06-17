@@ -3,7 +3,9 @@
 import streamlit as st
 import time
 import threading
+import pandas as pd
 from models import Domanda
+from scores import ottieni_classifica
 
 class QuizUI:
     def __init__(self, controller):
@@ -18,10 +20,8 @@ class QuizUI:
             st.session_state.punteggio = 0
             st.session_state.punteggio_finale = 0
             st.session_state.dettagli = ''
-            st.session_state.iniziali = ''
-            # Inizializza il tempo dell'ultimo aggiornamento
-            st.session_state.last_update_time = time.time()
-        
+            st.session_state.mostra_classifica = False
+
         # Disegna l'interfaccia in base alla pagina corrente
         if st.session_state.pagina == 'home':
             self.show_home()
@@ -176,25 +176,95 @@ class QuizUI:
             
         iniziali = (lettera1 + lettera2 + lettera3).upper()
         
-        # Bottone salva
-        if st.button("Salva il tuo risultato"):
-            if len(iniziali) == 3 and iniziali.isalpha():
-                self.controller.salva(iniziali)
-                st.success(f"Punteggio salvato come '{iniziali}'!")
-            else:
-                st.error("Inserisci esattamente 3 lettere (A-Z)")
+        col1, col2 = st.columns(2)
+        with col1:
+            # Bottone salva
+            if st.button("Salva il tuo risultato"):
+                if len(iniziali) == 3 and iniziali.isalpha():
+                    self.controller.salva(iniziali)
+                    st.success(f"Punteggio salvato come '{iniziali}'!")
+                    
+                    # Mostra la classifica dopo il salvataggio
+                    st.session_state.mostra_classifica = True
+                    self.show_leaderboard()
+                else:
+                    st.error("Inserisci esattamente 3 lettere (A-Z)")
+        
+        with col2:
+            # Bottone per visualizzare la classifica
+            if st.button("Visualizza Classifica"):
+                st.session_state.mostra_classifica = True
+                self.show_leaderboard()
+        
+        # Se è stato richiesto di mostrare la classifica, la visualizziamo qui
+        if st.session_state.mostra_classifica:
+            self.show_leaderboard()
                 
         # Bottoni finali
         col1, col2 = st.columns(2)
         with col1:
             if st.button("ESCI", use_container_width=True):
                 st.session_state.pagina = 'home'
+                st.session_state.mostra_classifica = False
                 st.rerun()
                 
         with col2:
             if st.button("RIPROVA", use_container_width=True):
                 st.session_state.pagina = 'home'
+                st.session_state.mostra_classifica = False
                 st.rerun()
+    
+    def show_leaderboard(self):
+        """
+        Visualizza la classifica dei migliori punteggi
+        """
+        # Ottieni la classifica
+        classifica = ottieni_classifica(10)
+        
+        if not classifica:
+            st.warning("Nessun punteggio disponibile nella classifica")
+            return
+            
+        st.markdown("### 🏆 CLASSIFICA TOP 10 🏆")
+        
+        # Converti la classifica in un dataframe pandas per una migliore visualizzazione
+        df = pd.DataFrame(classifica, columns=['Nome', 'Punti', 'Tempo', 'Data'])
+        
+        # Aggiungi una colonna per la posizione
+        df.insert(0, 'Pos', range(1, len(df) + 1))
+        
+        # Formatta il tempo con 2 decimali
+        df['Tempo'] = df['Tempo'].apply(lambda x: f"{x:.2f}")
+        
+        # Visualizza il dataframe come una tabella
+        st.dataframe(
+            df,
+            column_config={
+                "Pos": st.column_config.NumberColumn(
+                    "Pos",
+                    help="Posizione in classifica",
+                    width="small"
+                ),
+                "Nome": st.column_config.TextColumn(
+                    "Nome",
+                    width="small"
+                ),
+                "Punti": st.column_config.NumberColumn(
+                    "Punti",
+                    width="medium"
+                ),
+                "Tempo": st.column_config.TextColumn(
+                    "Tempo (s)",
+                    width="medium"
+                ),
+                "Data": st.column_config.TextColumn(
+                    "Data",
+                    width="medium"
+                )
+            },
+            use_container_width=True,
+            hide_index=True
+        )
     
     def run(self):
         # In Streamlit non c'è bisogno di un loop esplicito come in Tkinter

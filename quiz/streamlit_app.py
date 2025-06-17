@@ -15,11 +15,12 @@ st.set_page_config(
 import time
 import os
 import random
+import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from models import QuizSession
 from data_loader import load_questions
 from config import DIFFICULTY_SETTINGS
-from scores import salva_punteggio
+from scores import salva_punteggio, ottieni_classifica
 
 # Componente auto-refresh (esegue un refresh ogni secondo solo quando necessario)
 # Il refresh viene disabilitato nella pagina di recap
@@ -39,6 +40,7 @@ if 'initialized' not in st.session_state:
     st.session_state.punteggio_salvato = False
     st.session_state.mostra_alert = False
     st.session_state.alert_message = ""
+    st.session_state.mostra_classifica = False
 
 # Funzioni di controllo
 def start_quiz(difficolta):
@@ -120,8 +122,60 @@ def salva_risultato(iniziali):
         )
         return True
     except Exception as e:
-        st.error(f"Errore nel salvataggio: {str(e)}")
+        st.error(f"Errore nel salvataggio del punteggio: {e}")
         return False
+
+def mostra_classifica():
+    """
+    Visualizza la classifica dei migliori punteggi
+    """
+    # Ottieni la classifica
+    classifica = ottieni_classifica(10)
+    
+    if not classifica:
+        st.warning("Nessun punteggio disponibile nella classifica")
+        return
+        
+    st.markdown("### 🏆 CLASSIFICA TOP 10 🏆")
+    
+    # Converti la classifica in un dataframe pandas per una migliore visualizzazione
+    df = pd.DataFrame(classifica, columns=['Nome', 'Punti', 'Tempo', 'Data'])
+    
+    # Aggiungi una colonna per la posizione
+    df.insert(0, 'Pos', range(1, len(df) + 1))
+    
+    # Formatta il tempo con 2 decimali
+    df['Tempo'] = df['Tempo'].apply(lambda x: f"{x:.2f}s")
+    
+    # Visualizza il dataframe come una tabella
+    st.dataframe(
+        df,
+        column_config={
+            "Pos": st.column_config.NumberColumn(
+                "Pos",
+                help="Posizione in classifica",
+                width="small"
+            ),
+            "Nome": st.column_config.TextColumn(
+                "Nome",
+                width="small"
+            ),
+            "Punti": st.column_config.NumberColumn(
+                "Punti",
+                width="medium"
+            ),
+            "Tempo": st.column_config.TextColumn(
+                "Tempo",
+                width="medium"
+            ),
+            "Data": st.column_config.TextColumn(
+                "Data",
+                width="medium"
+            )
+        },
+        use_container_width=True,
+        hide_index=True
+    )
 
 def check_timeout():
     """Verifica se il tempo è scaduto per la domanda corrente"""
@@ -247,11 +301,11 @@ elif st.session_state.pagina == 'recap':
     # Usa 3 colonne per creare l'effetto dei trattini
     col1, col2, col3 = st.columns(3)
     with col1:
-        lettera1 = st.text_input("", max_chars=1, key="lettera1", label_visibility="collapsed", placeholder="_")
+        lettera1 = st.text_input("Lettera 1", max_chars=1, key="lettera1", label_visibility="collapsed", placeholder="_")
     with col2:
-        lettera2 = st.text_input("", max_chars=1, key="lettera2", label_visibility="collapsed", placeholder="_")
+        lettera2 = st.text_input("Lettera 2", max_chars=1, key="lettera2", label_visibility="collapsed", placeholder="_")
     with col3:
-        lettera3 = st.text_input("", max_chars=1, key="lettera3", label_visibility="collapsed", placeholder="_")
+        lettera3 = st.text_input("Lettera 3", max_chars=1, key="lettera3", label_visibility="collapsed", placeholder="_")
         
     iniziali = (lettera1 + lettera2 + lettera3).upper()
     
@@ -259,27 +313,48 @@ elif st.session_state.pagina == 'recap':
     if 'mostra_alert' in st.session_state and st.session_state.mostra_alert:
         st.success(st.session_state.alert_message)
         
-    if st.button("Salva il tuo risultato"):
-        if len(iniziali.strip()) == 3:
-            if not st.session_state.punteggio_salvato:
-                if salva_risultato(iniziali):
-                    st.session_state.punteggio_salvato = True
-                    st.session_state.mostra_alert = True
-                    st.session_state.alert_message = f"Punteggio salvato come '{iniziali}'!"
-                    st.rerun()
-        else:
-            st.session_state.mostra_alert = True
-            st.session_state.alert_message = "Inserisci esattamente 3 lettere per le tue iniziali"
+    # Aggiungiamo due colonne per i bottoni Salva e Visualizza Classifica
+    col_salva, col_classifica = st.columns(2)
+    
+    with col_salva:
+        if st.button("Salva il tuo risultato", use_container_width=True):
+            if len(iniziali.strip()) == 3:
+                if not st.session_state.punteggio_salvato:
+                    if salva_risultato(iniziali):
+                        st.session_state.punteggio_salvato = True
+                        st.session_state.mostra_alert = True
+                        st.session_state.alert_message = f"Punteggio salvato come '{iniziali}'!"
+                        st.session_state.mostra_classifica = True
+                        st.rerun()
+            else:
+                st.session_state.mostra_alert = True
+                st.session_state.alert_message = "Inserisci esattamente 3 lettere per le tue iniziali"
+                st.rerun()
+    
+    with col_classifica:
+        if st.button("Visualizza Classifica", use_container_width=True):
+            st.session_state.mostra_classifica = True
             st.rerun()
+    
+    # Mostra la classifica se richiesto
+    if st.session_state.mostra_classifica:
+        mostra_classifica()
             
     # Bottoni finali
+    st.write("---")
     col1, col2 = st.columns(2)
     with col1:
         if st.button("ESCI", use_container_width=True):
             st.session_state.pagina = 'home'
+            st.session_state.mostra_classifica = False
             st.rerun()
             
     with col2:
         if st.button("RIPROVA", use_container_width=True):
             st.session_state.pagina = 'home'
+            st.session_state.mostra_classifica = False
             st.rerun()
+
+    # Mostra classifica se attivato
+    if st.session_state.mostra_classifica:
+        mostra_classifica()
