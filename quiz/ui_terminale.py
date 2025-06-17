@@ -9,6 +9,9 @@ Contiene funzioni per:
 
 :author: Tuo Nome
 :created: 2025-06-12
+
+Questo file è stato rinominato in ui_terminale.py per lasciare spazio alla nuova interfaccia grafica.
+Nessuna modifica al codice originale.
 """
 
 import sys

@@ -10,25 +10,134 @@ il calcolo del punteggio e la visualizzazione dei risultati.
 
 import random
 import sys
+import argparse
 
 from config import DIFFICULTY_SETTINGS
 from data_loader import load_questions
 from models import QuizSession
-from ui import (
-    prompt_difficulty,
-    prompt_restart,
-    display_question,
-    prompt_answer,
-    display_feedback,
-    display_summary,
-    prompt_initials_and_save
-)
-
 
 def main():
     """
     Ciclo principale del programma. Gestisce una o più sessioni quiz.
     """
+    parser = argparse.ArgumentParser(description="Quiz a scelta multipla")
+    parser.add_argument('--ui', choices=['terminale', 'tkinter'], default='terminale', help='Scegli la UI: terminale o tkinter')
+    args = parser.parse_args()
+
+    if args.ui == 'tkinter':
+        from ui_tkinter import QuizUI
+        from models import QuizSession
+        import os
+        import random
+        from data_loader import load_questions
+        from config import DIFFICULTY_SETTINGS
+        import tkinter as tk
+        from tkinter import messagebox
+
+        class QuizController:
+            def __init__(self, ui):
+                self.ui = ui
+                self.sessione = None
+                self.domande = []
+                self.difficolta = None
+                self.timeout = None
+                self.punteggio = 0
+                self.stats = None
+                self.current_index = 0
+
+            def start_quiz(self, difficolta):
+                diff_map = {'facile': 1, 'medio': 2, 'difficile': 3}
+                livello = diff_map[difficolta]
+                self.difficolta = difficolta
+                self.timeout = DIFFICULTY_SETTINGS[livello][1]
+                num_domande = DIFFICULTY_SETTINGS[livello][0]
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                file_path = os.path.join(base_dir, "questions.json")
+                self.domande = load_questions(file_path)
+                random.shuffle(self.domande)
+                self.domande = self.domande[:num_domande]
+                self.sessione = QuizSession(domande=self.domande, timeout=self.timeout)
+                self.current_index = 0
+                self.next_question()
+
+            def next_question(self):
+                domanda = self.sessione.next_question()
+                if domanda:
+                    self.ui.show_question(
+                        domanda.testo,
+                        [domanda.opzioni[k] for k in sorted(domanda.opzioni.keys())],
+                        self.sessione.punteggio,
+                        self.timeout,
+                        lambda idx: self.rispondi(domanda, idx),
+                        self.salta,
+                        self.esci
+                    )
+                else:
+                    self.fine_quiz()
+
+            def rispondi(self, domanda, idx):
+                lettera = sorted(domanda.opzioni.keys())[idx]
+                import time
+                tempo = 0.0  # Per ora non misuriamo il tempo reale nella UI grafica
+                punti, is_correct, scaduto = self.sessione.record_answer(domanda, lettera, tempo)
+                self.next_question()
+
+            def salta(self):
+                domanda = self.domande[self.sessione._index - 1]
+                tempo = self.timeout + 1
+                self.sessione.record_answer(domanda, '', tempo)
+                self.next_question()
+
+            def esci(self):
+                # Prima di uscire, fermiamo il timer
+                if hasattr(self.ui, 'stop_timer'):
+                    self.ui.stop_timer()
+                self.ui.root.destroy()
+
+            def fine_quiz(self):
+                dettagli = f"✔️ {self.sessione.stats['corrette']}  ❌ {self.sessione.stats['errate']}  ⏭️ {self.sessione.stats['saltate']}"
+                self.ui.show_recap(
+                    self.sessione.punteggio,
+                    dettagli,
+                    self.salva,
+                    self.esci,
+                    self.riavvia
+                )
+
+            def salva(self, nome):
+                from scores import salva_punteggio
+                
+                # Verifica che ci siano esattamente 3 caratteri
+                if len(nome) != 3 or not nome.isalpha():
+                    messagebox.showwarning('Input non valido', 
+                                         'Inserisci esattamente 3 lettere (A-Z)')
+                    return
+                    
+                # Calcola tempo medio e salva
+                media = sum(self.sessione.stats['tempi']) / len(self.sessione.stats['tempi']) if self.sessione.stats['tempi'] else 0.0
+                salva_punteggio(nome.upper(), self.sessione.punteggio, media)
+                messagebox.showinfo('Salvato', f"Punteggio salvato come '{nome.upper()}'!")
+
+            def riavvia(self):
+                self.ui.show_home()
+
+        controller = QuizController(None)
+        ui = QuizUI(controller)
+        controller.ui = ui
+        ui.run()
+        return
+
+    # --- UI terminale classica ---
+    from ui_terminale import (
+        prompt_difficulty,
+        prompt_restart,
+        display_question,
+        prompt_answer,
+        display_feedback,
+        display_summary,
+        prompt_initials_and_save
+    )
+
     while True:
         try:
             # Caricamento domande
