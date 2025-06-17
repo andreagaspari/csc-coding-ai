@@ -1,103 +1,285 @@
-# streamlit_app.py
-# File principale per avviare l'app Streamlit
+# streamlit_component_app.py
+# Versione con timer basato su componente React custom
+# Richiede l'installazione del pacchetto: pip install streamlit-autorefresh
 
 import streamlit as st
+
+# Configurazione pagina (DEVE essere la prima chiamata Streamlit)
+st.set_page_config(
+    page_title="Quiz App (Timer avanzato)",
+    page_icon="⏱️",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+import time
 import os
-import sys
 import random
-from ui_streamlit import QuizUI
+from streamlit_autorefresh import st_autorefresh
 from models import QuizSession
 from data_loader import load_questions
 from config import DIFFICULTY_SETTINGS
 from scores import salva_punteggio
 
-class QuizController:
-    def __init__(self):
-        self.sessione = None
-        self.domande = []
-        self.difficolta = None
-        self.timeout = None
-        self.punteggio = 0
-        self.stats = None
-        self.current_index = 0
+# Componente auto-refresh (esegue un refresh ogni secondo solo quando necessario)
+# Il refresh viene disabilitato nella pagina di recap
+if 'pagina' not in st.session_state or st.session_state.pagina != 'recap':
+    count = st_autorefresh(interval=1000, key="timer_refresh")
+
+# Inizializzazione stato
+if 'initialized' not in st.session_state:
+    st.session_state.initialized = True
+    st.session_state.pagina = 'home'
+    st.session_state.punteggio = 0
+    st.session_state.domande = []
+    st.session_state.indice_domanda = 0
+    st.session_state.timeout = 0
+    st.session_state.stats = {"corrette": 0, "errate": 0, "saltate": 0, "tempi": []}
+    st.session_state.tempo_inizio = None
+    st.session_state.punteggio_salvato = False
+    st.session_state.mostra_alert = False
+    st.session_state.alert_message = ""
+
+# Funzioni di controllo
+def start_quiz(difficolta):
+    diff_map = {'facile': 1, 'medio': 2, 'difficile': 3}
+    livello = diff_map[difficolta]
+    st.session_state.timeout = DIFFICULTY_SETTINGS[livello][1]
+    num_domande = DIFFICULTY_SETTINGS[livello][0]
+    
+    # Carica le domande
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_dir, "questions.json")
+    domande = load_questions(file_path)
+    
+    random.shuffle(domande)
+    st.session_state.domande = domande[:num_domande]
+    st.session_state.indice_domanda = 0
+    st.session_state.punteggio = 0
+    st.session_state.stats = {"corrette": 0, "errate": 0, "saltate": 0, "tempi": []}
+    st.session_state.pagina = 'domanda'
+    st.session_state.tempo_inizio = time.time()  # Inizializza il timer
+
+def rispondi(indice_opzione):
+    from score_calculator import calculate_score
+    
+    # Calcola tempo trascorso
+    tempo_trascorso = 0.0
+    if st.session_state.tempo_inizio:
+        tempo_trascorso = time.time() - st.session_state.tempo_inizio
+    
+    # Prepara la risposta
+    domanda = st.session_state.domande[st.session_state.indice_domanda]
+    lettera = sorted(domanda.opzioni.keys())[indice_opzione]
+    
+    # Determina correttezza
+    is_correct = lettera == domanda.corretta
+    punti = calculate_score(is_correct, tempo_trascorso, st.session_state.timeout)
+    st.session_state.punteggio += punti
+    st.session_state.stats["tempi"].append(tempo_trascorso)
+    
+    if is_correct:
+        st.session_state.stats["corrette"] += 1
+    else:
+        st.session_state.stats["errate"] += 1
         
-    def start_quiz(self, difficolta):
-        diff_map = {'facile': 1, 'medio': 2, 'difficile': 3}
-        livello = diff_map[difficolta]
-        self.difficolta = difficolta
-        self.timeout = DIFFICULTY_SETTINGS[livello][1]
-        num_domande = DIFFICULTY_SETTINGS[livello][0]
+    st.session_state.indice_domanda += 1
+    st.session_state.tempo_inizio = time.time()  # Resetta il timer
+    
+    # Verifica se siamo alla fine del quiz
+    if st.session_state.indice_domanda >= len(st.session_state.domande):
+        st.session_state.pagina = 'recap'
+    
+def salta():
+    # Logica per saltare una domanda
+    if st.session_state.indice_domanda < len(st.session_state.domande) - 1:
+        # Aggiorna statistiche
+        st.session_state.stats["saltate"] += 1
         
-        # Carica le domande
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(base_dir, "questions.json")
-        self.domande = load_questions(file_path)
+        # Passa alla domanda successiva
+        st.session_state.indice_domanda += 1
+        st.session_state.tempo_inizio = time.time()
+    else:
+        # Fine del quiz
+        st.session_state.pagina = 'recap'
         
-        # Mescola e seleziona il numero di domande in base alla difficoltà
-        random.shuffle(self.domande)
-        self.domande = self.domande[:num_domande]
+def salva_risultato(iniziali):
+    """Salva il punteggio nel file scores.csv"""
+    if len(iniziali.strip()) != 3:
+        return False
         
-        # Inizializza la sessione
-        self.sessione = QuizSession(domande=self.domande, timeout=self.timeout)
-        self.current_index = 0
-    
-    def get_current_question(self):
-        try:
-            if self.current_index < len(self.domande):
-                return self.domande[self.current_index]
-            return None
-        except:
-            return None
-    
-    def next_question(self):
-        self.current_index += 1
-    
-    def rispondi(self, domanda, idx):
-        lettera = sorted(domanda.opzioni.keys())[idx]
-        tempo = 0.0  # Per ora non misuriamo il tempo reale
-        self.sessione.record_answer(domanda, lettera, tempo)
-        self.next_question()
-    
-    def salta(self):
-        domanda = self.get_current_question()
-        if domanda:
-            tempo = self.timeout + 1
-            self.sessione.record_answer(domanda, '', tempo)
-            self.next_question()
-    
-    def fine_quiz(self):
-        # Genera dettagli per la schermata finale
-        dettagli = f"✓{self.sessione.stats['corrette']} ✗{self.sessione.stats['errate']} →{self.sessione.stats['saltate']}"
+    try:
+        # Calcola il tempo medio delle risposte (se ci sono risposte date)
+        tempi = st.session_state.stats["tempi"]
+        tempo_medio = sum(tempi) / len(tempi) if tempi else 0
         
-        # Salva nello stato della sessione per la pagina di recap
-        st.session_state.punteggio_finale = self.sessione.punteggio
-        st.session_state.dettagli = dettagli
-    
-    def salva(self, nome):
-        if len(nome) != 3 or not nome.isalpha():
-            st.error("Inserisci esattamente 3 lettere")
-            return False
-            
-        media = sum(self.sessione.stats['tempi']) / len(self.sessione.stats['tempi']) if self.sessione.stats['tempi'] else 0.0
-        salva_punteggio(nome.upper(), self.sessione.punteggio, media)
+        salva_punteggio(
+            iniziali, 
+            st.session_state.punteggio, 
+            tempo_medio
+        )
         return True
+    except Exception as e:
+        st.error(f"Errore nel salvataggio: {str(e)}")
+        return False
 
-def main():
-    # Configura la pagina Streamlit
-    st.set_page_config(
-        page_title="Quiz App",
-        page_icon="❓",
-        layout="centered",
-        initial_sidebar_state="collapsed",
-    )
-    
-    # Aggiungi il controller alla sessione se non esiste già
-    if 'controller' not in st.session_state:
-        st.session_state.controller = QuizController()
-    
-    # Crea l'interfaccia utente
-    ui = QuizUI(st.session_state.controller)
-    ui.run()
+def check_timeout():
+    """Verifica se il tempo è scaduto per la domanda corrente"""
+    if not st.session_state.tempo_inizio:
+        return False
+        
+    tempo_trascorso = time.time() - st.session_state.tempo_inizio
+    if tempo_trascorso >= st.session_state.timeout:
+        # Tempo scaduto, segna come domanda saltata
+        st.session_state.stats["saltate"] += 1
+        
+        # Passa alla domanda successiva o termina
+        if st.session_state.indice_domanda < len(st.session_state.domande) - 1:
+            st.session_state.indice_domanda += 1
+            st.session_state.tempo_inizio = time.time()
+        else:
+            # Fine del quiz
+            st.session_state.pagina = 'recap'
+        
+        return True
+    return False
 
-if __name__ == "__main__":
-    main()
+# Logica di gestione del timeout
+if st.session_state.pagina == 'domanda' and check_timeout():
+    salta()  # Tempo scaduto, salta automaticamente
+
+# Home page
+if st.session_state.pagina == 'home':
+    st.title("BENVENUTO AL QUIZ")
+    st.subheader("SCEGLI LA DIFFICOLTÀ")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("FACILE", use_container_width=True):
+            start_quiz('facile')
+            st.rerun()
+    
+    with col2:
+        if st.button("MEDIO", use_container_width=True):
+            start_quiz('medio')
+            st.rerun()
+    
+    with col3:
+        if st.button("DIFFICILE", use_container_width=True):
+            start_quiz('difficile')
+            st.rerun()
+
+# Pagina domanda
+elif st.session_state.pagina == 'domanda':
+    # Verifica se siamo alla fine
+    if st.session_state.indice_domanda >= len(st.session_state.domande):
+        st.session_state.pagina = 'recap'
+        st.rerun()
+    else:
+        domanda = st.session_state.domande[st.session_state.indice_domanda]
+        
+        # Header con punteggio
+        col_exit, col_punteggio = st.columns([4, 1])
+        
+        with col_exit:
+            if st.button("⬅️ ESCI"):
+                st.session_state.pagina = 'home'
+                st.rerun()
+        
+        with col_punteggio:
+            st.write(f"**Punteggio: {st.session_state.punteggio}**")
+        
+        # Timer
+        if st.session_state.tempo_inizio:
+            tempo_trascorso = time.time() - st.session_state.tempo_inizio
+            tempo_rimasto = max(0, st.session_state.timeout - tempo_trascorso)
+            percentuale = tempo_rimasto / st.session_state.timeout
+            
+            # Scegli il colore in base al tempo rimanente
+            color = 'green'
+            if percentuale < 0.6:
+                color = 'orange'
+            if percentuale < 0.3:
+                color = 'red'
+                
+            st.progress(percentuale)
+            st.markdown(f"<p style='text-align: center; color: {color}; font-weight: bold;'>{int(tempo_rimasto)}s</p>",
+                      unsafe_allow_html=True)
+        
+        # Testo della domanda
+        st.markdown(f"### {domanda.testo}")
+        
+        # Opzioni di risposta
+        opzioni_chiavi = sorted(domanda.opzioni.keys())  # ['A', 'B', 'C', 'D']
+        
+        for i, lettera in enumerate(opzioni_chiavi):
+            if st.button(f"{lettera}) {domanda.opzioni[lettera]}", key=f"opt_{i}", use_container_width=True):
+                rispondi(i)
+                st.rerun()
+        
+        # Bottone per saltare
+        if st.button("SALTA", use_container_width=False, key="skip_btn"):
+            salta()
+            st.rerun()
+
+# Pagina recap finale
+elif st.session_state.pagina == 'recap':
+    st.title("IL TUO PUNTEGGIO")
+    
+    # Punteggio grande
+    st.markdown(f"<h1 style='text-align: center;'>{st.session_state.punteggio}</h1>", unsafe_allow_html=True)
+    
+    # Statistiche con icone
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"✓ **{st.session_state.stats['corrette']}**")
+    with col2:
+        st.markdown(f"✗ **{st.session_state.stats['errate']}**")
+    with col3:
+        st.markdown(f"→ **{st.session_state.stats['saltate']}**")
+        
+    st.write("---")
+    
+    # Input per le iniziali (3 lettere)
+    st.write("### Inserisci le tue iniziali (3 lettere)")
+    
+    # Usa 3 colonne per creare l'effetto dei trattini
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        lettera1 = st.text_input("", max_chars=1, key="lettera1", label_visibility="collapsed", placeholder="_")
+    with col2:
+        lettera2 = st.text_input("", max_chars=1, key="lettera2", label_visibility="collapsed", placeholder="_")
+    with col3:
+        lettera3 = st.text_input("", max_chars=1, key="lettera3", label_visibility="collapsed", placeholder="_")
+        
+    iniziali = (lettera1 + lettera2 + lettera3).upper()
+    
+    # Bottone salva
+    if 'mostra_alert' in st.session_state and st.session_state.mostra_alert:
+        st.success(st.session_state.alert_message)
+        
+    if st.button("Salva il tuo risultato"):
+        if len(iniziali.strip()) == 3:
+            if not st.session_state.punteggio_salvato:
+                if salva_risultato(iniziali):
+                    st.session_state.punteggio_salvato = True
+                    st.session_state.mostra_alert = True
+                    st.session_state.alert_message = f"Punteggio salvato come '{iniziali}'!"
+                    st.rerun()
+        else:
+            st.session_state.mostra_alert = True
+            st.session_state.alert_message = "Inserisci esattamente 3 lettere per le tue iniziali"
+            st.rerun()
+            
+    # Bottoni finali
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("ESCI", use_container_width=True):
+            st.session_state.pagina = 'home'
+            st.rerun()
+            
+    with col2:
+        if st.button("RIPROVA", use_container_width=True):
+            st.session_state.pagina = 'home'
+            st.rerun()
